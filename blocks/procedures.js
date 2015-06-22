@@ -29,7 +29,14 @@ goog.provide('Blockly.Blocks.procedures');
 goog.require('Blockly.Blocks');
 
 
+<<<<<<< HEAD
 Blockly.Blocks.procedures.HUE = 210;
+=======
+/**
+ * Common HSV hue for all blocks in this category.
+ */
+Blockly.Blocks.procedures.HUE = 290;
+>>>>>>> de30483bb0f540c8d572d6e382d8a249717855a7
 
 Blockly.Blocks['procedures_defnoreturn'] = {
   /**
@@ -539,13 +546,12 @@ Blockly.Blocks['procedures_callnoreturn'] = {
     }
     // Rebuild the block's arguments.
     this.arguments_ = [].concat(paramNames);
+    this.renderArgs_();
     this.quarkArguments_ = paramIds;
-    for (var i = 0; i < this.arguments_.length; i++) {
-      var input = this.appendValueInput('ARG' + i)
-          .setAlign(Blockly.ALIGN_RIGHT)
-          .appendField(this.arguments_[i]);
-      if (this.quarkArguments_) {
-        // Reconnect any child blocks.
+    // Reconnect any child blocks.
+    if (this.quarkArguments_) {
+      for (var i = 0; i < this.arguments_.length; i++) {
+        var input = this.getInput('ARG' + i);
         var quarkName = this.quarkArguments_[i];
         if (quarkName in this.quarkConnections_) {
           var connection = this.quarkConnections_[quarkName];
@@ -558,6 +564,23 @@ Blockly.Blocks['procedures_callnoreturn'] = {
           }
         }
       }
+    }
+    // Restore rendering and show the changes.
+    this.rendered = savedRendered;
+    if (this.rendered) {
+      this.render();
+    }
+  },
+  /**
+   * Render the arguments.
+   * @this Blockly.Block
+   * @private
+   */
+  renderArgs_: function() {
+    for (var i = 0; i < this.arguments_.length; i++) {
+      var input = this.appendValueInput('ARG' + i)
+          .setAlign(Blockly.ALIGN_RIGHT)
+          .appendField(this.arguments_[i]);
       input.init();
     }
     // Add 'with:' if there are parameters.
@@ -573,11 +596,6 @@ Blockly.Blocks['procedures_callnoreturn'] = {
           input.removeField('WITH');
         }
       }
-    }
-    // Restore rendering and show the changes.
-    this.rendered = savedRendered;
-    if (this.rendered) {
-      this.render();
     }
   },
   /**
@@ -676,6 +694,7 @@ Blockly.Blocks['procedures_callreturn'] = {
   renameProcedure: Blockly.Blocks['procedures_callnoreturn'].renameProcedure,
   setProcedureParameters:
       Blockly.Blocks['procedures_callnoreturn'].setProcedureParameters,
+  renderArgs_: Blockly.Blocks['procedures_callnoreturn'].renderArgs_,
   mutationToDom: Blockly.Blocks['procedures_callnoreturn'].mutationToDom,
   domToMutation: Blockly.Blocks['procedures_callnoreturn'].domToMutation,
   renameVar: Blockly.Blocks['procedures_callnoreturn'].renameVar,

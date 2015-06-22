@@ -29,8 +29,15 @@ goog.provide('Blockly.Blocks.logic');
 goog.require('Blockly.Blocks');
 
 
+<<<<<<< HEAD
 var DATA_HUE = 230;
 Blockly.Blocks.logic.HUE = 0;
+=======
+/**
+ * Common HSV hue for all blocks in this category.
+ */
+Blockly.Blocks.logic.HUE = 210;
+>>>>>>> de30483bb0f540c8d572d6e382d8a249717855a7
 
 Blockly.Blocks['controls_if'] = {
   /**
@@ -90,8 +97,8 @@ Blockly.Blocks['controls_if'] = {
    * @this Blockly.Block
    */
   domToMutation: function(xmlElement) {
-    this.elseifCount_ = parseInt(xmlElement.getAttribute('elseif'), 10);
-    this.elseCount_ = parseInt(xmlElement.getAttribute('else'), 10);
+    this.elseifCount_ = parseInt(xmlElement.getAttribute('elseif'), 10) || 0;
+    this.elseCount_ = parseInt(xmlElement.getAttribute('else'), 10) || 0;
     for (var i = 1; i <= this.elseifCount_; i++) {
       this.appendValueInput('IF' + i)
           .setCheck('Boolean')
@@ -368,13 +375,20 @@ Blockly.Blocks['logic_negate'] = {
    * @this Blockly.Block
    */
   init: function() {
-    this.setHelpUrl(Blockly.Msg.LOGIC_NEGATE_HELPURL);
-    this.setColour(Blockly.Blocks.logic.HUE);
-    this.setOutput(true, 'Boolean');
-    this.interpolateMsg(Blockly.Msg.LOGIC_NEGATE_TITLE,
-                        ['BOOL', 'Boolean', Blockly.ALIGN_RIGHT],
-                        Blockly.ALIGN_RIGHT);
-    this.setTooltip(Blockly.Msg.LOGIC_NEGATE_TOOLTIP);
+    this.jsonInit({
+      "message": Blockly.Msg.LOGIC_NEGATE_TITLE,
+      "args": [
+        {
+          "type": "input_value",
+          "name": "BOOL",
+          "check": "Boolean"
+        }
+      ],
+      "output": "Boolean",
+      "colour": Blockly.Blocks.logic.HUE,
+      "tooltip": Blockly.Msg.LOGIC_NEGATE_TOOLTIP,
+      "helpUrl": Blockly.Msg.LOGIC_NEGATE_HELPURL
+    });
   }
 };
 
