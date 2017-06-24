@@ -48,9 +48,12 @@ Blockly.Blocks['procedures_defnoreturn'] = {
         .appendField(nameField, 'NAME')
         .appendField('', 'PARAMS');
     this.setMutator(new Blockly.Mutator(['procedures_mutatorarg']));
-    if (Blockly.Msg.PROCEDURES_DEFNORETURN_COMMENT) {
+    /*if ((this.workspace.options.comments ||
+         (this.workspace.options.parentWorkspace &&
+          this.workspace.options.parentWorkspace.options.comments)) &&
+        Blockly.Msg.PROCEDURES_DEFNORETURN_COMMENT) {
       this.setCommentText(Blockly.Msg.PROCEDURES_DEFNORETURN_COMMENT);
-    }
+    }*/
     this.setColour(Blockly.Blocks.procedures.HUE);
     this.setTooltip(Blockly.Msg.PROCEDURES_DEFNORETURN_TOOLTIP);
     this.setHelpUrl(Blockly.Msg.PROCEDURES_DEFNORETURN_HELPURL);
@@ -321,7 +324,41 @@ Blockly.Blocks['procedures_defnoreturn'] = {
       }
     }
   },
-  callType_: 'procedures_callnoreturn'
+  callType_: 'procedures_callnoreturn',
+  /**
+   * Called whenever anything on the workspace changes.
+   * Add warning if this flow block is not nested inside a loop.
+   * @this Blockly.Block
+   */
+  onchange: function() {
+    if (!this.workspace) {
+      // Block has been deleted.
+      return;
+    }
+    
+    // Does it have valid returns?
+    var hasReturns = false;
+    var descendants = this.getDescendants();
+    for (var i = 0; i < descendants.length; i++) {
+        if (descendants[i].type == 'procedures_return') {
+            hasReturns = true;
+        }
+    }
+    
+    // Iterate through every block and check the name.
+    var functionName = this.getFieldValue('NAME');
+    var blocks = this.workspace.getAllBlocks();
+    for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].type == 'procedures_callreturn' ||
+            blocks[i].type == 'procedures_callnoreturn') {
+            var callName = blocks[i].getFieldValue('NAME');
+            // Variable name may be null if the block is only half-built.
+            if (callName && Blockly.Names.equals(functionName, callName)) {
+                blocks[i].setReturn(hasReturns);
+            }
+        }
+    }
+  }
 };
 
 Blockly.Blocks['procedures_defreturn'] = {
@@ -342,9 +379,12 @@ Blockly.Blocks['procedures_defreturn'] = {
         .setAlign(Blockly.ALIGN_RIGHT)
         .appendField(Blockly.Msg.PROCEDURES_DEFRETURN_RETURN);
     this.setMutator(new Blockly.Mutator(['procedures_mutatorarg']));
-    if (Blockly.Msg.PROCEDURES_DEFRETURN_COMMENT) {
+    /*if ((this.workspace.options.comments ||
+         (this.workspace.options.parentWorkspace &&
+          this.workspace.options.parentWorkspace.options.comments)) &&
+        Blockly.Msg.PROCEDURES_DEFRETURN_COMMENT) {
       this.setCommentText(Blockly.Msg.PROCEDURES_DEFRETURN_COMMENT);
-    }
+    }*/
     this.setColour(Blockly.Blocks.procedures.HUE);
     this.setTooltip(Blockly.Msg.PROCEDURES_DEFRETURN_TOOLTIP);
     this.setPreviousStatement(true);
@@ -360,6 +400,7 @@ Blockly.Blocks['procedures_defreturn'] = {
   domToMutation: Blockly.Blocks['procedures_defnoreturn'].domToMutation,
   decompose: Blockly.Blocks['procedures_defnoreturn'].decompose,
   compose: Blockly.Blocks['procedures_defnoreturn'].compose,
+  onchange: Blockly.Blocks['procedures_defnoreturn'].onchange,
   /**
    * Return the signature of this procedure definition.
    * @return {!Array} Tuple containing three elements:
@@ -401,14 +442,20 @@ Blockly.Blocks['procedures_mutatorarg'] = {
    * @this Blockly.Block
    */
   init: function() {
+    var field = new Blockly.FieldTextInput('x', this.validator_);
     this.appendDummyInput()
         .appendField(Blockly.Msg.PROCEDURES_MUTATORARG_TITLE)
-        .appendField(new Blockly.FieldTextInput('x', this.validator_), 'NAME');
+        .appendField(field, 'NAME');
     this.setPreviousStatement(true);
     this.setNextStatement(true);
     this.setColour(Blockly.Blocks.procedures.HUE);
     this.setTooltip(Blockly.Msg.PROCEDURES_MUTATORARG_TOOLTIP);
     this.contextMenu = false;
+
+    // Create the default variable when we drag the block in from the flyout.
+    // Have to do this after installing the field on the block.
+    field.onFinishEditing_ = this.createNewVar_;
+    field.onFinishEditing_('x');
   },
   /**
    * Obtain a valid name for the procedure.
@@ -422,6 +469,20 @@ Blockly.Blocks['procedures_mutatorarg'] = {
   validator_: function(newVar) {
     newVar = newVar.replace(/[\s\xa0]+/g, ' ').replace(/^ | $/g, '');
     return newVar || null;
+  },
+  /**
+   * Called when focusing away from the text field.
+   * Creates a new variable with this name.
+   * @param {string} newText The new variable name.
+   * @private
+   * @this Blockly.FieldTextInput
+   */
+  createNewVar_: function(newText) {
+    var source = this.sourceBlock_;
+    if (source && source.workspace && source.workspace.options
+        && source.workspace.options.parentWorkspace) {
+      source.workspace.options.parentWorkspace.createVariable(newText);
+    }
   }
 };
 
@@ -473,9 +534,15 @@ Blockly.Blocks['procedures_callnoreturn'] = {
      * @this Blockly.Block
      */
     setReturn: function(returnState) {
-        this.setOutput(returnState);
-        this.previousStatement(!returnState);
-        this.nextStatement(!returnState);
+        if (returnState) {
+            this.setPreviousStatement(false);
+            this.setNextStatement(false);
+            this.setOutput(true);
+        } else {
+            this.setOutput(false);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+        }
         if (this.rendered) {
             this.render();
         }
@@ -777,6 +844,7 @@ Blockly.Blocks['procedures_callreturn'] = {
   domToMutation: Blockly.Blocks['procedures_callnoreturn'].domToMutation,
   renameVar: Blockly.Blocks['procedures_callnoreturn'].renameVar,
   onchange: Blockly.Blocks['procedures_callnoreturn'].onchange,
+  setReturn: Blockly.Blocks['procedures_callnoreturn'].setReturn,
   customContextMenu:
       Blockly.Blocks['procedures_callnoreturn'].customContextMenu,
   defType_: 'procedures_defreturn'
@@ -832,6 +900,9 @@ Blockly.Blocks['procedures_ifreturn'] = {
    * @this Blockly.Block
    */
   onchange: function(e) {
+    if (this.workspace.isDragging()) {
+      return;  // Don't change state at the start of a drag.
+    }
     var legal = false;
     // Is the block nested in a procedure?
     var block = this;
@@ -843,6 +914,7 @@ Blockly.Blocks['procedures_ifreturn'] = {
       block = block.getSurroundParent();
     } while (block);
     if (legal) {
+        /*
       // If needed, toggle whether this block has a return value.
       if (block.type == 'procedures_defnoreturn' && this.hasReturnValue_) {
         this.removeInput('VALUE');
@@ -856,9 +928,16 @@ Blockly.Blocks['procedures_ifreturn'] = {
           .appendField(Blockly.Msg.PROCEDURES_DEFRETURN_RETURN);
         this.hasReturnValue_ = true;
       }
+      */
       this.setWarningText(null);
+      if (!this.isInFlyout) {
+        this.setDisabled(false);
+      }
     } else {
       this.setWarningText(Blockly.Msg.PROCEDURES_IFRETURN_WARNING);
+      if (!this.isInFlyout && !this.getInheritedDisabled()) {
+        this.setDisabled(true);
+      }
     }
   },
   /**
@@ -907,22 +986,6 @@ Blockly.Blocks['procedures_return'] = {
       block = block.getSurroundParent();
     } while (block);
     if (legal) {
-      // If needed, toggle whether this block has a return value.
-      /*
-      if (block.type == 'procedures_defnoreturn' && this.hasReturnValue_) {
-        this.removeInput('VALUE');
-        this.appendDummyInput('VALUE')
-            .appendField(Blockly.Msg.PROCEDURES_DEFRETURN_RETURN);
-        this.hasReturnValue_ = false;
-      } else if (block.type == 'procedures_defreturn' &&
-                 !this.hasReturnValue_) {
-        this.removeInput('VALUE');
-        this.appendValueInput('VALUE')
-            .appendField(Blockly.Msg.PROCEDURES_DEFRETURN_RETURN);
-        this.hasReturnValue_ = true;
-      }*/
-      /*Blockly.Procedures.mutateCallersReturns(this.getFieldValue('NAME'),
-                                              this.workspace, true);*/
       this.setWarningText(null);
     } else {
       this.setWarningText(Blockly.Msg.PROCEDURES_IFRETURN_WARNING);

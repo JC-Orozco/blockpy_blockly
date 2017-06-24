@@ -31,7 +31,7 @@ goog.require('Blockly.Blocks');
 /**
  * Common HSV hue for all blocks in this category.
  */
-Blockly.Blocks.lists.HUE = 100;
+Blockly.Blocks.lists.HUE = 30;
 
 Blockly.Blocks['lists_create_empty'] = {
   /**
@@ -76,6 +76,9 @@ Blockly.Blocks['lists_create_with'] = {
   mutationToDom: function() {
     var container = document.createElement('mutation');
     container.setAttribute('items', this.itemCount_);
+    /*if (this.itemCount_ > 3) {
+        container.setAttribute("inline", "false");
+    } */
     return container;
   },
   /**
@@ -169,6 +172,11 @@ Blockly.Blocks['lists_create_with'] = {
           input.appendField(Blockly.Msg.LISTS_CREATE_WITH_INPUT_WITH);
         }
       }
+    }
+    if (this.itemCount_ > 3) {
+        this.setInputsInline(false);
+    } else {
+        this.setInputsInline(true);
     }
     // Remove deleted inputs.
     while (this.getInput('ADD' + i)) {
@@ -300,9 +308,12 @@ Blockly.Blocks['lists_indexOf'] = {
     this.appendValueInput('FIND')
         .appendField(new Blockly.FieldDropdown(OPERATORS), 'END');
     this.setInputsInline(true);
-    var tooltip = Blockly.Msg.LISTS_INDEX_OF_TOOLTIP
-        .replace('%1', Blockly.Blocks.ONE_BASED_INDEXING ? '0' : '-1');
-    this.setTooltip(tooltip);
+    // Assign 'this' to a variable for use in the tooltip closure below.
+    var thisBlock = this;
+    this.setTooltip(function() {
+      return Blockly.Msg.LISTS_INDEX_OF_TOOLTIP.replace('%1',
+          this.workspace.options.oneBasedIndex ? '0' : '-1');
+    });
   }
 };
 
@@ -412,8 +423,11 @@ Blockly.Blocks['lists_getIndex'] = {
           break;
       }
       if (where == 'FROM_START' || where == 'FROM_END') {
-        tooltip += '  ' + Blockly.Msg.LISTS_INDEX_FROM_START_TOOLTIP
-            .replace('%1', Blockly.Blocks.ONE_BASED_INDEXING ? '#1' : '#0');
+        var msg = (where == 'FROM_START') ?
+            Blockly.Msg.LISTS_INDEX_FROM_START_TOOLTIP :
+            Blockly.Msg.LISTS_INDEX_FROM_END_TOOLTIP;
+        tooltip += '  ' + msg.replace('%1',
+                thisBlock.workspace.options.oneBasedIndex ? '#1' : '#0');
       }
       return tooltip;
     });
@@ -573,7 +587,8 @@ Blockly.Blocks['lists_setIndex'] = {
       }
       if (where == 'FROM_START' || where == 'FROM_END') {
         tooltip += '  ' + Blockly.Msg.LISTS_INDEX_FROM_START_TOOLTIP
-            .replace('%1', Blockly.Blocks.ONE_BASED_INDEXING ? '#1' : '#0');
+            .replace('%1',
+                thisBlock.workspace.options.oneBasedIndex ? '#1' : '#0');
       }
       return tooltip;
     });
